@@ -2,7 +2,8 @@
   "name": "get-preferences",
   "displayName": "Get Preferences",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.5",
+  "icon": "CISLogo.png",  
   "engines": {
     "vscode": "^1.85.0"
   },

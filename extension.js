@@ -1,56 +1,92 @@
 const vscode = require('vscode');
-const Client = require('ssh2-sftp-client');
+const { Client } = require('ssh2'); // Optional for SFTP implementation
+const fs = require('fs');
 const path = require('path');
 
-/**
- * Activates the extension.
- * @param {vscode.ExtensionContext} context
- */
 function activate(context) {
-    console.log('Extension "roborio-networktables" is now active!');
+    // Create an output channel
+    const outputChannel = vscode.window.createOutputChannel('NetworkTables Download');
 
-    // Register the command
     let disposable = vscode.commands.registerCommand('extension.downloadNetworkTables', async () => {
-        // Prompt for team number
-        const teamNumber = await vscode.window.showInputBox({
-            prompt: 'Enter your team number (e.g., 9999)',
-            validateInput: (value) => (value.match(/^\d+$/) ? null : 'Please enter a valid team number.'),
-        });
-
-        if (!teamNumber) {
-            vscode.window.showErrorMessage('Team number is required.');
+        // Get the workspace folder path
+        const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : null;
+        if (!workspaceFolder) {
+            outputChannel.appendLine("No workspace folder is open.");
+            outputChannel.show();
             return;
         }
 
-        // Define file paths
-        const roboRIOHost = `roboRIO-${teamNumber}-frc.local`;
-        const remoteFilePath = '/home/lvuser/networktables.json';
-        const localFilePath = path.join(vscode.workspace.rootPath || '', 'networktables.json');
+        // Path to the .wpilib/wpilib_preferences.json file
+        const preferencesFilePath = path.join(workspaceFolder, '.wpilib', 'wpilib_preferences.json');
 
-        // Create an SFTP client instance
-        const sftp = new Client();
+        // Log the preferences path to check if it's correct
+        outputChannel.appendLine(`Looking for wpilib_preferences.json at: ${preferencesFilePath}`);
 
-        try {
-            vscode.window.showInformationMessage('Connecting to roboRIO...');
-            await sftp.connect({
-                host: roboRIOHost,
-                username: 'lvuser',
-                password: '', // No password required for lvuser
-            });
-
-            vscode.window.showInformationMessage('Connected to roboRIO. Downloading networktables.json...');
-            await sftp.get(remoteFilePath, localFilePath);
-
-            vscode.window.showInformationMessage(`File downloaded successfully to ${localFilePath}`);
-        } catch (err) {
-            vscode.window.showErrorMessage(`Failed to download file: ${err.message}`);
-        } finally {
-            await sftp.end();
+        // Check if the file exists
+        if (!fs.existsSync(preferencesFilePath)) {
+            outputChannel.appendLine("Could not find wpilib_preferences.json. Please ensure this is an FRC project.");
+            outputChannel.show();
+            return;
         }
+
+        // Read and parse the JSON file
+        let teamNumber = null;
+        try {
+            const fileContents = fs.readFileSync(preferencesFilePath, 'utf8');
+            const preferences = JSON.parse(fileContents);
+
+            // Retrieve the team number from the JSON file
+            teamNumber = preferences.teamNumber || null; // Corrected key is 'teamNumber'
+        } catch (err) {
+            outputChannel.appendLine(`Error reading wpilib_preferences.json: ${err.message}`);
+            outputChannel.show();
+            return;
+        }
+
+        // If team number isn't found in the file, show an error
+        if (!teamNumber) {
+            outputChannel.appendLine("Could not find a valid team number in wpilib_preferences.json.");
+            outputChannel.show();
+            return;
+        }
+
+        // Proceed with SFTP download
+        const remoteHost = `roboRIO-${teamNumber}-frc.local`;
+        const remotePath = "/home/lvuser/networktables.json";
+        const localPath = `${workspaceFolder}/networktables.json`;
+
+        outputChannel.appendLine(`Connecting to ${remoteHost}...`);
+
+        const conn = new Client();
+        conn
+            .on('ready', () => {
+                conn.sftp((err, sftp) => {
+                    if (err) {
+                        outputChannel.appendLine(`SFTP error: ${err.message}`);
+                        conn.end();
+                        return;
+                    }
+                    const remoteStream = sftp.createReadStream(remotePath);
+                    const localStream = fs.createWriteStream(localPath);
+
+                    remoteStream.pipe(localStream);
+                    localStream.on('close', () => {
+                        outputChannel.appendLine(`Downloaded networktables.json to ${localPath}`);
+                        conn.end();
+                    });
+                });
+            })
+            .connect({
+                host: remoteHost,
+                port: 22,
+                username: "lvuser",
+                password: "" // Optional if no password is required
+            });
     });
 
     context.subscriptions.push(disposable);
 }
+
 
 /**
  * Deactivates the extension.
