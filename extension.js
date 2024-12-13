@@ -1,36 +1,65 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 const vscode = require('vscode');
-
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+const Client = require('ssh2-sftp-client');
+const path = require('path');
 
 /**
+ * Activates the extension.
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
+    console.log('Extension "roborio-networktables" is now active!');
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "get-preferences" is now active!');
+    // Register the command
+    let disposable = vscode.commands.registerCommand('extension.downloadNetworkTables', async () => {
+        // Prompt for team number
+        const teamNumber = await vscode.window.showInputBox({
+            prompt: 'Enter your team number (e.g., 9999)',
+            validateInput: (value) => (value.match(/^\d+$/) ? null : 'Please enter a valid team number.'),
+        });
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('get-preferences.helloWorld', function () {
-		// The code you place here will be executed every time your command is executed
+        if (!teamNumber) {
+            vscode.window.showErrorMessage('Team number is required.');
+            return;
+        }
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Get Preferences!');
-	});
+        // Define file paths
+        const roboRIOHost = `roboRIO-${teamNumber}-frc.local`;
+        const remoteFilePath = '/home/lvuser/networktables.json';
+        const localFilePath = path.join(vscode.workspace.rootPath || '', 'networktables.json');
 
-	context.subscriptions.push(disposable);
+        // Create an SFTP client instance
+        const sftp = new Client();
+
+        try {
+            vscode.window.showInformationMessage('Connecting to roboRIO...');
+            await sftp.connect({
+                host: roboRIOHost,
+                username: 'lvuser',
+                password: '', // No password required for lvuser
+            });
+
+            vscode.window.showInformationMessage('Connected to roboRIO. Downloading networktables.json...');
+            await sftp.get(remoteFilePath, localFilePath);
+
+            vscode.window.showInformationMessage(`File downloaded successfully to ${localFilePath}`);
+        } catch (err) {
+            vscode.window.showErrorMessage(`Failed to download file: ${err.message}`);
+        } finally {
+            await sftp.end();
+        }
+    });
+
+    context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
-function deactivate() {}
+/**
+ * Deactivates the extension.
+ */
+function deactivate() {
+    console.log('Extension "roborio-networktables" is now deactivated.');
+}
 
 module.exports = {
-	activate,
-	deactivate
-}
+    activate,
+    deactivate,
+};

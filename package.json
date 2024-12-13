@@ -13,10 +13,10 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "get-preferences.helloWorld",
-        "title": "Hello World"
-      }
+        {
+            "command": "extension.downloadNetworkTables",
+            "title": "Download networktables.json from roboRIO"
+        }
     ]
   },
   "scripts": {
