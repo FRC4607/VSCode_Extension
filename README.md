@@ -1,8 +1,8 @@
-# NetworkTables Downloader Extension
+# Get Preferences Extension
 
 ## Description
 
-The **NetworkTables Downloader** extension for Visual Studio Code is designed to automatically retrieve the **team number** from the WPILib project and download the `networktables.json` file from the RoboRIO. This file contains the current preferences in the NetworkTables, which is crucial for backing up and working with robot settings and configurations. This extension streamlines the process of ensuring that your robot's NetworkTables data is saved locally, allowing you to make quick backups of essential settings.
+The **Get Preferences** extension for Visual Studio Code is designed to automatically retrieve the **team number** from the WPILib project and download the `networktables.json` file from the RoboRIO. This file contains the current preferences in the NetworkTables, which is crucial for backing up and working with robot settings and configurations. This extension streamlines the process of ensuring that your robot's NetworkTables data is saved locally, allowing you to make quick backups of essential settings.
 
 ## Features
 
@@ -16,7 +16,7 @@ To install the extension, follow these steps:
 
 1. Open **Visual Studio Code**.
 2. Go to the **Extensions** view by clicking the Extensions icon in the Activity Bar on the side of the window.
-3. Search for **NetworkTables Downloader** and click the **Install** button.
+3. Search for **Get Preferences** and click the **Install** button.
 
 Alternatively, you can manually install the extension by downloading the `.vsix` file and using the **Install from VSIX** option in VS Code.
 

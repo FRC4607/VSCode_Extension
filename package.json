@@ -3,6 +3,7 @@
   "displayName": "Get Preferences",
   "description": "",
   "version": "0.1.0",
+  "publisher": "CoreyApplegate",
   "repository": {
     "type": "git",
     "url": "https://github.com/FRC4607/VSCode_Extension"
