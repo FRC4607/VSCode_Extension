@@ -25,6 +25,8 @@ Alternatively, you can manually install the extension by downloading the `.vsix`
 1. **Ensure Your RoboRIO is Accessible**: Make sure that your RoboRIO is connected to the same network as your computer.
 2. **Open Your WPILib Project**: Open your WPILib project in Visual Studio Code. The extension will automatically fetch the team number from the `.wpilib/wpilib_preferences.json` file.
 3. **Run the Command**:
+   - Right Click any file in the Exsplore window and Select Download networktables.json from roboRIO
+   or
    - You can execute the command by opening the **Command Palette** (`Ctrl+Shift+P` or `Cmd+Shift+P`) and searching for `Download NetworkTables from roboRIO`.
 4. **Download the `networktables.json`**: The extension will connect to your RoboRIO and download the `networktables.json` file into your project's root directory.
 
