@@ -21,7 +21,11 @@
     "commands": [
       {
         "command": "extension.downloadNetworkTables",
-        "title": "Download networktables.json from roboRIO"
+        "title": "Get networktables.json from roboRIO"
+      },
+      {
+        "command": "extension.uploadNetworkTables",
+        "title": "Send networktables.json to roboRIO"
       }
     ],
     "submenus": [
@@ -48,6 +52,11 @@
         {
           "command": "extension.downloadNetworkTables",
           "group": "DownloadFrom"
+        },
+        {
+          "command": "extension.uploadNetworkTables",
+          "when": "resourceFilename == networktables.json",
+          "group": "UploadTo"
         }
       ]
     }

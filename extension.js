@@ -5,111 +5,209 @@ const path = require('path');
 
 function activate(context) {
     // Create an output channel
-    const outputChannel = vscode.window.createOutputChannel('NetworkTables Download');
+    const outputChannel = vscode.window.createOutputChannel('NetworkTables');
     outputChannel.show();
 
-    let disposable = vscode.commands.registerCommand('extension.downloadNetworkTables', async () => {
-        // Get the workspace folder path
-        const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : null;
-        if (!workspaceFolder) {
-            outputChannel.appendLine("No workspace folder is open.");
-            vscode.window.showWarningMessage("No workspace folder is open.");
-            return;
-        }
-
-        // Path to the .wpilib/wpilib_preferences.json file
-        const preferencesFilePath = path.join(workspaceFolder, '.wpilib', 'wpilib_preferences.json');
-
-        // Log the preferences path to check if it's correct
-        outputChannel.appendLine(`Looking for wpilib_preferences.json at: ${preferencesFilePath}`);
-
-        // Check if the file exists
-        if (!fs.existsSync(preferencesFilePath)) {
-            const message = "Could not find wpilib_preferences.json. Please ensure this is an FRC project.";
-            outputChannel.appendLine(message);
-            vscode.window.showWarningMessage(message);
-            return;
-        }
-
-        // Read and parse the JSON file
-        let teamNumber = null;
-        try {
-            const fileContents = fs.readFileSync(preferencesFilePath, 'utf8');
-            const preferences = JSON.parse(fileContents);
-
-            // Retrieve the team number from the JSON file
-            teamNumber = preferences.teamNumber || null; // Corrected key is 'teamNumber'
-        } catch (err) {
-            const message = `Error reading wpilib_preferences.json: ${err.message}`;
-            outputChannel.appendLine(message);
-            vscode.window.showWarningMessage(message);
-            return;
-        }
-
-        // If team number isn't found in the file, show an error
-        if (!teamNumber) {
-            const message = "Could not find a valid team number in wpilib_preferences.json.";
-            outputChannel.appendLine(message);
-            vscode.window.showWarningMessage(message);
-            return;
-        }
-
-        // Proceed with SFTP download
-        const remoteHost = `roboRIO-${teamNumber}-frc.local`;
-        const remotePath = "/home/lvuser/networktables.json";
-        const localPath = `${workspaceFolder}/networktables.json`;
-
-        outputChannel.appendLine(`Connecting to ${remoteHost}...`);
-
-        const conn = new Client();
-        conn
-            .on('ready', () => {
-                conn.sftp((err, sftp) => {
-                    if (err) {
-                        const message = `SFTP error: ${err.message}`;
-                        outputChannel.appendLine(message);
-                        vscode.window.showWarningMessage(message);
-                        conn.end();
-                        return;
-                    }
-                    const remoteStream = sftp.createReadStream(remotePath);
-                    const localStream = fs.createWriteStream(localPath);
-
-                    remoteStream.pipe(localStream);
-                    localStream.on('close', () => {
-                        const message = `Downloaded networktables.json to ${localPath}, Check connection and Team Number`;
-                        outputChannel.appendLine(message);
-                        vscode.window.showInformationMessage(message); // Show success popup
-                        conn.end();
-                    });
-                });
-            })
-            .on('error', (err) => {
-                const message = `Connection error: ${err.message}, Check connection and Team Number`;
-                outputChannel.appendLine(message);
-                vscode.window.showWarningMessage(message); // Show warning popup
-            })
-            .on('timeout', () => {
-                const message = "Connection timed out. Check connection and Team Number";
-                outputChannel.appendLine(message);
-                vscode.window.showWarningMessage(message); // Show warning popup
-                conn.end();
-            })
-            .connect({
-                host: remoteHost,
-                port: 22,
-                username: "lvuser",
-                password: "", // Optional if no password is required
-                readyTimeout: 10000 // Timeout in milliseconds (e.g., 10 seconds)
-            });
+    // Command to download the file from the robot
+    let downloadDisposable = vscode.commands.registerCommand('extension.downloadNetworkTables', async () => {
+        await handleDownload(outputChannel);
     });
 
-    context.subscriptions.push(disposable);
+    // Command to upload the file to the robot
+    let uploadDisposable = vscode.commands.registerCommand('extension.uploadNetworkTables', async () => {
+        await handleUpload(outputChannel);
+    });
+
+    context.subscriptions.push(downloadDisposable, uploadDisposable);
 }
 
 /**
- * Deactivates the extension.
+ * Handles downloading the file from the robot.
  */
+async function handleDownload(outputChannel) {
+    const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : null;
+    if (!workspaceFolder) {
+        const message = "No workspace folder is open.";
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    const preferencesFilePath = path.join(workspaceFolder, '.wpilib', 'wpilib_preferences.json');
+    outputChannel.appendLine(`Looking for wpilib_preferences.json at: ${preferencesFilePath}`);
+
+    if (!fs.existsSync(preferencesFilePath)) {
+        const message = "Could not find wpilib_preferences.json. Please ensure this is an FRC project.";
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    let teamNumber = null;
+    try {
+        const fileContents = fs.readFileSync(preferencesFilePath, 'utf8');
+        const preferences = JSON.parse(fileContents);
+        teamNumber = preferences.teamNumber || null;
+    } catch (err) {
+        const message = `Error reading wpilib_preferences.json: ${err.message}`;
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    if (!teamNumber) {
+        const message = "Could not find a valid team number in wpilib_preferences.json.";
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    const remoteHost = `roboRIO-${teamNumber}-frc.local`;
+    const remotePath = "/home/lvuser/networktables.json";
+    const localPath = `${workspaceFolder}/networktables.json`;
+
+    outputChannel.appendLine(`Connecting to ${remoteHost}...`);
+
+    const conn = new Client();
+    conn
+        .on('ready', () => {
+            conn.sftp((err, sftp) => {
+                if (err) {
+                    const message = `SFTP error: ${err.message}`;
+                    outputChannel.appendLine(message);
+                    vscode.window.showWarningMessage(message);
+                    conn.end();
+                    return;
+                }
+                const remoteStream = sftp.createReadStream(remotePath);
+                const localStream = fs.createWriteStream(localPath);
+
+                remoteStream.pipe(localStream);
+                localStream.on('close', () => {
+                    const message = `Downloaded networktables.json to ${localPath}`;
+                    outputChannel.appendLine(message);
+                    vscode.window.showInformationMessage(message);
+                    conn.end();
+                });
+            });
+        })
+        .on('error', (err) => {
+            const message = `Connection error: ${err.message}`;
+            outputChannel.appendLine(message);
+            vscode.window.showWarningMessage(message);
+        })
+        .on('timeout', () => {
+            const message = "Connection timed out.";
+            outputChannel.appendLine(message);
+            vscode.window.showWarningMessage(message);
+            conn.end();
+        })
+        .connect({
+            host: remoteHost,
+            port: 22,
+            username: "lvuser",
+            password: "",
+            readyTimeout: 10000 // 10 seconds
+        });
+}
+
+/**
+ * Handles uploading the file to the robot.
+ */
+async function handleUpload(outputChannel) {
+    const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : null;
+    if (!workspaceFolder) {
+        const message = "No workspace folder is open.";
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    const localPath = `${workspaceFolder}/networktables.json`;
+
+    // Check if the file exists
+    if (!fs.existsSync(localPath)) {
+        const message = "networktables.json file does not exist. Please make sure it is in the workspace folder.";
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    const preferencesFilePath = path.join(workspaceFolder, '.wpilib', 'wpilib_preferences.json');
+    if (!fs.existsSync(preferencesFilePath)) {
+        const message = "Could not find wpilib_preferences.json. Please ensure this is an FRC project.";
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    let teamNumber = null;
+    try {
+        const fileContents = fs.readFileSync(preferencesFilePath, 'utf8');
+        const preferences = JSON.parse(fileContents);
+        teamNumber = preferences.teamNumber || null;
+    } catch (err) {
+        const message = `Error reading wpilib_preferences.json: ${err.message}`;
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    if (!teamNumber) {
+        const message = "Could not find a valid team number in wpilib_preferences.json.";
+        outputChannel.appendLine(message);
+        vscode.window.showWarningMessage(message);
+        return;
+    }
+
+    const remoteHost = `roboRIO-${teamNumber}-frc.local`;
+    const remotePath = "/home/lvuser/networktables.json";
+
+    outputChannel.appendLine(`Connecting to ${remoteHost} to upload networktables.json...`);
+
+    const conn = new Client();
+    conn
+        .on('ready', () => {
+            conn.sftp((err, sftp) => {
+                if (err) {
+                    const message = `SFTP error: ${err.message}`;
+                    outputChannel.appendLine(message);
+                    vscode.window.showWarningMessage(message);
+                    conn.end();
+                    return;
+                }
+                const localStream = fs.createReadStream(localPath);
+                const remoteStream = sftp.createWriteStream(remotePath);
+
+                localStream.pipe(remoteStream);
+                remoteStream.on('close', () => {
+                    const message = `Uploaded networktables.json to ${remoteHost}:${remotePath}`;
+                    outputChannel.appendLine(message);
+                    vscode.window.showInformationMessage(message);
+                    conn.end();
+                });
+            });
+        })
+        .on('error', (err) => {
+            const message = `Connection error: ${err.message}`;
+            outputChannel.appendLine(message);
+            vscode.window.showWarningMessage(message);
+        })
+        .on('timeout', () => {
+            const message = "Connection timed out.";
+            outputChannel.appendLine(message);
+            vscode.window.showWarningMessage(message);
+            conn.end();
+        })
+        .connect({
+            host: remoteHost,
+            port: 22,
+            username: "lvuser",
+            password: "",
+            readyTimeout: 10000 // 10 seconds
+        });
+}
+
 function deactivate() {
     console.log('Extension "roborio-networktables" is now deactivated.');
 }
