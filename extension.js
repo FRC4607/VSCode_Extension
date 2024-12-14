@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { Client } = require('ssh2'); // Optional for SFTP implementation
+const { Client } = require('ssh2');
 const fs = require('fs');
 const path = require('path');
 
@@ -13,7 +13,7 @@ function activate(context) {
         const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : null;
         if (!workspaceFolder) {
             outputChannel.appendLine("No workspace folder is open.");
-            outputChannel.show();
+            vscode.window.showWarningMessage("No workspace folder is open.");
             return;
         }
 
@@ -25,8 +25,9 @@ function activate(context) {
 
         // Check if the file exists
         if (!fs.existsSync(preferencesFilePath)) {
-            outputChannel.appendLine("Could not find wpilib_preferences.json. Please ensure this is an FRC project.");
-            outputChannel.show();
+            const message = "Could not find wpilib_preferences.json. Please ensure this is an FRC project.";
+            outputChannel.appendLine(message);
+            vscode.window.showWarningMessage(message);
             return;
         }
 
@@ -39,15 +40,17 @@ function activate(context) {
             // Retrieve the team number from the JSON file
             teamNumber = preferences.teamNumber || null; // Corrected key is 'teamNumber'
         } catch (err) {
-            outputChannel.appendLine(`Error reading wpilib_preferences.json: ${err.message}`);
-            outputChannel.show();
+            const message = `Error reading wpilib_preferences.json: ${err.message}`;
+            outputChannel.appendLine(message);
+            vscode.window.showWarningMessage(message);
             return;
         }
 
         // If team number isn't found in the file, show an error
         if (!teamNumber) {
-            outputChannel.appendLine("Could not find a valid team number in wpilib_preferences.json.");
-            outputChannel.show();
+            const message = "Could not find a valid team number in wpilib_preferences.json.";
+            outputChannel.appendLine(message);
+            vscode.window.showWarningMessage(message);
             return;
         }
 
@@ -63,7 +66,9 @@ function activate(context) {
             .on('ready', () => {
                 conn.sftp((err, sftp) => {
                     if (err) {
-                        outputChannel.appendLine(`SFTP error: ${err.message}`);
+                        const message = `SFTP error: ${err.message}`;
+                        outputChannel.appendLine(message);
+                        vscode.window.showWarningMessage(message);
                         conn.end();
                         return;
                     }
@@ -72,22 +77,35 @@ function activate(context) {
 
                     remoteStream.pipe(localStream);
                     localStream.on('close', () => {
-                        outputChannel.appendLine(`Downloaded networktables.json to ${localPath}`);
+                        const message = `Downloaded networktables.json to ${localPath}, Check connection and Team Number`;
+                        outputChannel.appendLine(message);
+                        vscode.window.showInformationMessage(message); // Show success popup
                         conn.end();
                     });
                 });
+            })
+            .on('error', (err) => {
+                const message = `Connection error: ${err.message}, Check connection and Team Number`;
+                outputChannel.appendLine(message);
+                vscode.window.showWarningMessage(message); // Show warning popup
+            })
+            .on('timeout', () => {
+                const message = "Connection timed out. Check connection and Team Number";
+                outputChannel.appendLine(message);
+                vscode.window.showWarningMessage(message); // Show warning popup
+                conn.end();
             })
             .connect({
                 host: remoteHost,
                 port: 22,
                 username: "lvuser",
-                password: "" // Optional if no password is required
+                password: "", // Optional if no password is required
+                readyTimeout: 10000 // Timeout in milliseconds (e.g., 10 seconds)
             });
     });
 
     context.subscriptions.push(disposable);
 }
-
 
 /**
  * Deactivates the extension.
