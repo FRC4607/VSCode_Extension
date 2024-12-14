@@ -6,6 +6,7 @@ const path = require('path');
 function activate(context) {
     // Create an output channel
     const outputChannel = vscode.window.createOutputChannel('NetworkTables Download');
+    outputChannel.show();
 
     let disposable = vscode.commands.registerCommand('extension.downloadNetworkTables', async () => {
         // Get the workspace folder path

@@ -2,7 +2,7 @@
   "name": "get-preferences",
   "displayName": "Get Preferences",
   "description": "",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "CoreyApplegate",
   "repository": {
     "type": "git",
@@ -24,17 +24,30 @@
         "title": "Download networktables.json from roboRIO"
       }
     ],
+    "submenus": [
+      {
+        "id": "RobotPreferences.submenu",
+        "label": "Robot Preferences"
+      }
+    ],
     "menus": {
       "editor/context": [
         {
-          "command": "extension.downloadNetworkTables",
-          "group": "navigation"
+          "submenu": "RobotPreferences.submenu",
+          "group": "Robot Preferences"
         }
       ],
       "explorer/context": [
         {
+          "submenu": "RobotPreferences.submenu",
+          "group": "Robot Preferences"
+        }
+        
+      ],
+      "RobotPreferences.submenu":[
+        {
           "command": "extension.downloadNetworkTables",
-          "group": "navigation"
+          "group": "DownloadFrom"
         }
       ]
     }
