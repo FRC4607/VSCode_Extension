@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest  # Run on a Linux runner (you can also use macos-latest or windows-latest)
+    runs-on: windows-latest  # Run on a Linux runner (you can also use macos-latest or windows-latest)
     
     steps:
     # Step 1: Check out the repository
