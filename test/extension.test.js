@@ -8,8 +8,36 @@ const vscode = require('vscode');
 suite('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
 
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
+	test('Extension test', async () => {
+		const extensionId = 'CoreyApplegate.get-preferences'; // Replace with your extension ID
+		// Ensure that the extension is installed and activated
+        const extension = vscode.extensions.getExtension(extensionId);
+        assert.ok(extension, `Extension ${extensionId} is not installed!`);
+	});
+
+	test('downloadNetworkTables test', async () => {
+        const commandId = 'extension.downloadNetworkTables'; // Replace with the command ID you want to test
+
+		// Activate the extension by invoking the command
+        await vscode.commands.executeCommand(commandId);
+
+        // Check if the command is successfully invoked
+        const isCommandRegistered = await vscode.commands.getCommands(true)
+            .then(commands => commands.includes(commandId));
+        
+        assert.ok(isCommandRegistered, `Command ${commandId} is not registered.`);
+	});
+
+	test('uploadNetworkTables test', async () => {
+        const commandId = 'extension.uploadNetworkTables'; // Replace with the command ID you want to test
+
+		// Activate the extension by invoking the command
+        await vscode.commands.executeCommand(commandId);
+
+        // Check if the command is successfully invoked
+        const isCommandRegistered = await vscode.commands.getCommands(true)
+            .then(commands => commands.includes(commandId));
+        
+        assert.ok(isCommandRegistered, `Command ${commandId} is not registered.`);
 	});
 });
