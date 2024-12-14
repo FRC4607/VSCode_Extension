@@ -1,0 +1,34 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main  # Run on pushes to the main branch (or adjust as needed)
+  pull_request:
+    branches:
+      - main  # Run on pull requests to the main branch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # Run on a Linux runner (you can also use macos-latest or windows-latest)
+    
+    steps:
+    # Step 1: Check out the repository
+    - name: Checkout code
+      uses: actions/checkout@v2
+    
+    # Step 2: Set up Node.js (adjust version as needed)
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'  # Use the version of Node.js you require
+
+    # Step 3: Install dependencies
+    - name: Install dependencies
+      run: |
+        npm install
+
+    # Step 4: Run tests using Mocha
+    - name: Run tests
+      run: |
+        npm test  # This assumes you have a "test" script defined in your package.json
